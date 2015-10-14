@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="fr">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Asynchrone moderne en JS • Christophe Porteneuve @ Paris Web 2016</title>
+
+		<meta name="description" content="Asynchrone moderne en JS : promesses, async et await">
+		<meta name="author" content="Christophe Porteneuve">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link href='https://fonts.googleapis.com/css?family=Merriweather:700|Source+Sans+Pro:300,600,300italic,600italic|Source+Code+Pro:400,600' rel='stylesheet' type='text/css'>
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/animate.min.css">
+		<link rel="stylesheet" href="css/theme/sky.css" id="theme-basis">
+		<link rel="stylesheet" href="css/theme/pw15.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/tomorrow.css">
+
+		<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+		<script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+
+<!--     <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-43650325-10', 'auto');
+      ga('require', 'linkid');
+      ga('send', 'pageview');
+    </script> -->
+	</head>
+
+	<body id="prioFix">
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Asynchrone <br/>moderne en JS</h1>
+					<p>
+						<small>Un atelier de <a href="http://tddsworld.com/">Christophe Porteneuve</a> à <a href="http://www.paris-web.fr/">Paris Web 2016</a></small>
+					</p>
+				</section>
+
+				<section id="whoami">
+					<h2>whoami</h2>
+
+					<pre><code data-trim class="javascript">
+var christophe = {
+  age:        38.09034907597536,
+  family:     { wife: 'Élodie', son: 'Maxence' },
+  city:       'Paris, FR',
+  company:    'Delicious Insights',
+  trainings:  ['JS Total', 'Node.js', 'Git Total'],
+  webSince:   1995,
+  claimsToFame: [
+    'Prototype.js',
+    'Ruby On Rails',
+    'Bien Développer pour le Web 2.0',
+    'Prototype and Script.aculo.us',
+    'Paris Web'
+  ]
+};
+          </code></pre>
+				</section>
+
+        <section data-state="theme-color-silver-green">
+					<section id="callback-hell">
+            <h3>Petit rappel : le</h3>
+						<h1>Callback Hell</h1>
+            <h3>c’est relou.</h3>
+					</section>
+
+          <section id="cbhell-simple-example">
+            <h2>Un exemple simple</h2>
+
+            <pre><code class="javascript" data-trim data-noescape>
+function readPost(req, res) {
+  Post.findById(req.params.id<u>, function(err, post)</u> {
+    if (err) {
+      return handleError(err);
+    }
+
+    post.findRecentComments(<u>function(err, comments) {</u>
+      if (err) {
+        return handleError(err);
+      }
+
+      res.render('posts/show', { post: post, comments: comments, title: post.title });
+    });
+  });
+}
+            </code></pre>
+          </section>
+
+          <section id="cbhell-involved-example">
+            <h2>Un exemple plus réaliste</h2>
+
+            <pre><code class="javascript" data-trim data-noescape>
+function normalizeSKUs(skus, <u>cb</u>) {
+  var <u>normalizations = {}, count, xhrs = []</u>;
+
+  function handleError(err) {
+    _(xhrs).invoke('abort');
+    <u>cb(err);</u>
+  }
+
+  function handleSKU(payload) {
+    normalizations[payload.from] = payload.to;
+    if (<u>++count &lt; xhrs.length</u>)
+      return;
+
+    <u>cb(null, normalizations);</u>
+  }
+
+  function normalizeFromServer(sku) {
+    xhrs.push($.ajax({
+      url:       '/api/v1/skus/normalize',
+      data:      { sku: sku },
+      <u>onSuccess: handleSKU</u>,
+      <u>onError:   handleError</u>
+    }));
+  }
+}
+            </code></pre>
+          </section>
+
+          <section id="cbhell-whats-wrong">
+            <h2>C’est quoi le problème ?</h2>
+
+            <h4 class="breathe">Flux du code compliqué à suivre</h4>
+            <p class="fragment">
+              Correspondance esprit / code super foireuse<br/>
+              <small>(surtout parce qu’on n’a pas de donnée retournée)</small>
+            </p>
+            <p class="fragment">Gestion d’erreur bien bordélique.</p>
+
+            <h4 class="fragment">Confiance ébranlée</h4>
+            <p class="fragment">Est-ce que ça va <strong>tourner</strong> ?</p>
+            <p class="fragment">Est-ce que ça va bien appeler <strong>un seul</strong> des callbacks d’erreur ou de succès, et jamais <strong>les deux</strong> ?</p>
+            <p class="fragment">Est-ce que ça va tourner <strong>une seule fois</strong> ?</p>
+
+            <h4 class="fragment">Très dur à composer</h4>
+          </section>
+				</section> <!-- #callback-hell -->
+
+				<section data-state="theme-color-forest-yellow">
+          <section id="promises">
+            <h1>Les promesses</h1>
+            <h3>c’est trop cool.  Juré.</h3>
+          </section>
+
+          <section id="promises-history">
+            <h2>Ça fait un bail</h2>
+
+            <p>Elles sont là depuis longtemps, sous divers noms et formes.</p>
+            <p>Arrivées en JS en <strong>2007</strong> <a target="_blank" href="https://dojotoolkit.org/reference-guide/1.10/dojo/Deferred.html">avec Dōjō</a>.</p>
+            <p class="fragment">Promises/A proposé dans CommonJS en 2009 (Kris Zyp)</p>
+            <p class="fragment">Promises/A+ en <strong>2012</strong> (Brian Cavalier, Domenic Denicola et al.)</p>
+            <br/>
+            <p class="fragment">Les APIs web récentes sont basées promesses (ex. <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API">fetch</a>, <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorker">ServiceWorker</a>…)</p>
+            <p class="fragment">Des tas de libs (Q, rsvp, bluebird…), polyfills… Désormais <strong>natives à ES2015</strong>.</p>
+          </section>
+
+<!--
+FIXME: slides (JST?) sur:
+  - Les états
+  - then
+  - catch vs. then(a, b) vs. then(undefined, b)
+  - conversion synchrone/throw
+  - injection par renvoi de promesse
+  - Parallélisme avec all et race
+  - Création des nôtres
+ -->
+
+          <section id="promises-simple-example">
+            <h2>Exemples simples</h2>
+
+            <p>Enrobage XHR :</p>
+            <pre><code class="javascript" data-trim data-noescape>
+function get(url) {
+  return <u>new Promise(function(resolve, reject)</u> {
+    var req = new XMLHttpRequest();
+    req.open('GET', url);
+    req.onload = function() {
+      if (req.status === 200) {
+        <u>resolve</u>(req.response);
+      } else {
+        <u>reject(new Error(</u>req.statusText));
+      }
+    };
+    req.onerror = function() { <u>reject(new Error(</u>"Network error")); };
+    req.send();
+  });
+}
+            </code></pre>
+
+            <p>Les objets jqXHR de jQuery 3+ sont des promesses :</p>
+            <pre><code class="javascript" data-trim data-noescape>
+$.getJSON('/api/v1/status').then(renderStatus, handleError);
+            </code></pre>
+          </section>
+
+          <section id="promises-involved-example">
+            <h2>Un exemple plus velu</h2>
+
+            <pre><code class="javascript" data-trim data-noescape>
+function getJSON(url) {
+  return get(url).then(<u>JSON.parse</u>); // Sync, throwing steps are cast!
+}
+
+getJSON('story.json').then(function(story) {
+  <u>return getJSON</u>(story.chapterUrls[0]); // Chain injection!
+}).then(function(chapter1) {
+  addHtmlToPage(chapter1.html);
+})<u>.catch</u>(function() { // Exception catching!
+  addTextToPage("Chapter couldn’t display.  FML.");
+}).then(hideSpinner);
+            </code></pre>
+          </section>
+
+          <section id="promises-links" class="breathing">
+            <h2>Quelques super ressources</h2>
+
+            <p><a target="_blank" href="http://www.html5rocks.com/fr/tutorials/es6/promises/">Tuto génial</a> de Jake Archibald.  Enfonce vraiment bien le clou.</p>
+            <p class="fragment"><a target="_blank" href="https://www.promisejs.org/">promisejs.org</a>, une couverture exhaustive du sujet par Forbes Lindesay.</p>
+            <p class="fragment"><a target="_blank" href="http://bevacqua.github.io/promisees/">Promisees</a>, un super bac à sable interactif de Nicolás Bevacqua.</p>
+          </section>
+
+          <section id="promises-pros-and-cons">
+            <h2>Avantages &amp; inconvénients</h2>
+
+            <h4 class="breathe">Glop :</h4>
+            <p><strong>Fiable</strong> : seulement un des callbacks, une seule fois, garanti.  Et la gestion des exceptions en prime !</p>
+            <p class="fragment"><strong>Composable</strong> : chainable, avec injection et conversion.</p>
+            <div class="fragment">
+              <h4>Pas glop :</h4>
+              <p>Nouvelles <strong>abstractions</strong></p>
+            </div>
+            <p class="fragment">Légère pénalité de performance (va disparaître)</p>
+            <p class="fragment">Le flux du code reste <strong>non-intuitif</strong> / très différent du code synchrone.</p>
+          </section>
+<!--
+FIXME: slides sur:
+
+- Cancelable / Timeout
+- Adapté au one-shot, pas au multi-event -> observables / RxJS / BaconJS.
+ -->
+
+        </section> <!-- #promises -->
+
+        <section data-state="theme-color-blue-yellow">
+          <section id="async-await">
+            <h1>async / await</h1>
+            <h3>Wopitain.</h3>
+          </section>
+
+          <section id="async-await-intro">
+            <h2>Ayé.</h2>
+
+            <p>C’est un peu le <strong>Saint Graal</strong> du JS asynchrone.</p>
+            <p class="fragment">À peu près copié-collé de <strong>C# 5.0</strong> / .NET 4.5 (2012).</p>
+            <p class="fragment"><em>(Oui, y’a des choses bien dans les langages de chez MS ; merci Anders)</em></p>
+          </section>
+
+          <section id="async-await-example">
+            <h2>Synchrone ou asynchrone ?</h2>
+
+            <pre><code class="javascript" data-trim data-noescape>
+<u>async</u> function loadStory() {
+  try {
+    const story = <u>await</u> getJSON('story.json');
+    addHtmlToPage(story.heading);
+
+    for (let chapterPromise of story.chapterUrls.map(getJSON)) {
+      const chapter = <u>await</u> chapterPromise;
+      addHtmlToPage(chapter.html);
+    }
+
+    addTextToPage("All done");
+  } catch (err) {
+    addTextToPage("Argh, broken: " + err.message);
+  }
+  hideSpinner();
+});
+            </code></pre>
+          </section>
+
+          <section id="async-await-example-2">
+            <h2>Synchrone ou asynchrone ?</h2>
+
+            <pre><code class="javascript" data-trim data-noescape>
+<u>async</u> function login</u>(username, password, session) {
+  const user = <u>await</u> getUser(username);
+  const hash = <u>await</u> crypto.hashAsync(password + user.salt);
+  if (user.hash !== hash) {
+    throw new Error('Incorrect password');
+  }
+  session.setUser(user);
+});
+            </code></pre>
+          </section>
+
+          <section id="async-await-example-3">
+            <h2>Synchrone ou asynchrone ?</h2>
+
+            <pre><code class="javascript" data-trim data-noescape>
+<u>async</u> function loadDashboard(req, res) {
+  const user = <u>await</u> loadUser(req.session.userId)
+  const [profile, notifs] = <u>await Promise.all([</u>
+    user.getProfile(), user.getNotifications()
+  <u>])</u>
+  res.render('dashboard', { user, profile, notifs })
+}
+            </code></pre>
+          </section>
+
+          <section id="async-await-pros-and-cons">
+            <h2>Avantages &amp; Inconvénients</h2>
+
+            <p>La vie elle est trop beeeellllleeee ! ❤️</p>
+            <p class="fragment">Comme toutes les nouvelles fonctionnalités (ex. promesses, générateurs, proxies…) il faut encore <strong>optimiser la performance</strong>.  Mais ça vaut trop le coup.  Et ça <strong>sera</strong> performant.  Regardez la tendance de JS en général.</p>
+          </section>
+
+          <section id="async-await-status">
+            <h2>J’EN VEEEUUUX !</h2>
+
+            <p>Sera officiellement dans ES2017. Finalisé en juillet dernier.</p>
+            <p>Déjà dispo en natif dans Edge 13+ et Chrome 53+… derrière un flag.</p>
+            <p>Babel est ton ami (polyfille à coup de promesses + générateurs).</p>
+          </section>
+        </section> <!-- #async-await -->
+
+				<section>
+					<h1>Merci !</h1>
+          <h3>Et que JS soit avec vous.</h3>
+          <br>
+					<p>Christophe Porteneuve</p>
+          <p><a href="https://twitter.com/porteneuve">@porteneuve</a></p>
+
+          <p class="breathing">
+            Les slides sont sur <a href="http://bit.ly/pw16-async">bit.ly/pw16-async</a><br/>
+          </p>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+        width: '95%',
+        height: '90%',
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'linear', // default/cube/page/concave/zoom/linear/fade/none
+
+				// Parallax scrolling
+				// parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+				// parallaxBackgroundSize: '2100px 900px',
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
