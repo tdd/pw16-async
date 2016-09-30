@@ -68,7 +68,7 @@
 
 					<pre><code data-trim class="javascript">
 var christophe = {
-  age:        38.09034907597536,
+  age:        38.90896646132786,
   family:     { wife: 'Élodie', son: 'Maxence' },
   city:       'Paris, FR',
   company:    'Delicious Insights',
@@ -102,13 +102,13 @@ function readPost(req, res) {
       return handleError(err);
     }
 
-    post.findRecentComments(<u>function(err, comments) {</u>
+    <span class="fragment">post.findRecentComments(<u>function(err, comments) {</u>
       if (err) {
         return handleError(err);
       }
 
       res.render('posts/show', { post: post, comments: comments, title: post.title });
-    });
+    });</span>
   });
 }
             </code></pre>
@@ -191,9 +191,9 @@ function normalizeSKUs(skus, <u>cb</u>) {
 
             <ul>
               <li>la terminologie (promesse, états et destins, <em>thenable</em>, etc.)</li>
-              <li>les transitions d’état possibles</li>
-              <li>le fonctionnement de <code>then</code> (chaînage, propagation, etc.)</li>
-              <li>la sémantique de résolution</li>
+              <li class="fragment">les transitions d’état possibles</li>
+              <li class="fragment">le fonctionnement de <code>then</code> (chaînage, propagation, etc.)</li>
+              <li class="fragment">la sémantique de résolution</li>
             </ul>
           </section>
 
@@ -203,17 +203,19 @@ function normalizeSKUs(skus, <u>cb</u>) {
             <h4>États</h4>
 
             <ul>
-              <li><strong>En attente</strong> (<em lang="en">pending</em>) : n’a pas encore abouti à un résultat</li>
-              <li><strong>Accomplie</strong> (<em lang="en">fulfilled</em>) : a abouti à un résultat (<em lang="en">value</em>), figé</li>
-              <li><strong>Rejetée</strong> (<em lang="en">rejected</em>) : a eu un souci et fournit la raison, figée</li>
-              <li><strong>Établie</strong> (<em lang="en">settled</em>) : accomplie ou rejetée (pas en attente, donc)</li>
+              <li class="fragment"><strong>En attente</strong> (<em lang="en">pending</em>) : n’a pas encore abouti à un résultat</li>
+              <li class="fragment"><strong>Accomplie</strong> (<em lang="en">fulfilled</em>) : a abouti à un résultat (<em lang="en">value</em>), figé</li>
+              <li class="fragment"><strong>Rejetée</strong> (<em lang="en">rejected</em>) : a eu un souci et fournit la raison, figée</li>
+              <li class="fragment"><strong>Établie</strong> (<em lang="en">settled</em>) : accomplie ou rejetée (pas en attente, donc)</li>
             </ul>
 
-            <h4>Transition unique</h4>
+            <div class="fragment">
+              <h4>Transition unique</h4>
 
-            <p>Une promesse ne change d’état qu’une seule fois, d’en attente à accomplie ou rejetée.</p>
+              <p>Une promesse ne change d’état qu’une seule fois, d’en attente à accomplie ou rejetée.</p>
 
-            <p class="footnote"><a href="https://github.com/domenic/promises-unwrapping/blob/master/docs/states-and-fates.md">States and Fates</a></p>
+              <p class="footnote"><a href="https://github.com/domenic/promises-unwrapping/blob/master/docs/states-and-fates.md">States and Fates</a></p>
+            </div>
           </section>
 
           <section id="then-and-chain">
@@ -241,17 +243,19 @@ lookupUser(userId)
 <u>)</u>
             </code></pre>
 
-            <p>Mais n’oubliez pas : ils sont <strong>exclusifs !</strong></p>
+            <div class="fragment">
+              <p>Mais n’oubliez pas : ils sont <strong>exclusifs !</strong></p>
 
-            <pre><code class="javascript" data-trim data-noescape>
+              <pre><code class="javascript" data-trim data-noescape>
 lookupUser(<u>unknown</u>UserId)
 .then(
   (user) => console.log('USER:', user<u>.getName()</u>), // user === null -> BLAM
   (err)  => console.error(err)                     // Pas appelé !
 )
-            </code></pre>
+              </code></pre>
 
-            <p>Alors on fait comment ?</p>
+              <p>Alors on fait comment ?</p>
+            </div>
           </section>
 
           <section id="then-and-catch">
@@ -264,15 +268,17 @@ lookupUser(unknownUserId)
 <u>.then(null,</u> (err) => console.error(err))              // Étape 2
             </code></pre>
 
-            <p>Mais <code>then(null, …)</code> c’est <em>fugly</em>.  Alors…</p>
+            <div class="fragment">
+              <p>Mais <code>then(null, …)</code> c’est <em>fugly</em>.  Alors…</p>
 
-            <pre><code class="javascript" data-trim data-noescape>
+              <pre><code class="javascript" data-trim data-noescape>
 lookupUser(unknownUserId)
 .then((user) => console.log('USER:', user.getName()))  // Étape 1
 <u>.catch(</u>(err) => console.error(err))                   // Étape 2
-            </code></pre>
+              </code></pre>
 
-            <p>Comme pour un <code>try…catch…</code>, tout callback d’erreur neutralise l’erreur, et on pourrait continuer derrière du coup.</p>
+              <p>Comme pour un <code>try…catch…</code>, tout callback d’erreur neutralise l’erreur, et on pourrait continuer derrière du coup.</p>
+            </div>
           </section>
 
           <section id="promise-conversion">
@@ -326,16 +332,18 @@ getTags()
 .then((entryCount) => { render('entries/index', { tags, entries, entryCount }) })
             </code></pre>
 
-            <p>Eh, c’est JS, pas Java/PHP/Ruby/Python les gens !</p>
+            <div class="fragment">
+              <p>Eh, c’est JS, pas Java/PHP/Ruby/Python les gens !</p>
 
-            <pre><code class="javascript" data-trim data-noescape>
+              <pre><code class="javascript" data-trim data-noescape>
 <u>Promise.all([</u>getTags(), getEntries(), getEntryCount()<u>])</u>
 .then((<u>[tags, entries, entryCount]</u>) => {
   render('entries/index', { tags, entries, entryCount })
 })
-            </code></pre>
+              </code></pre>
+            </div>
 
-            <p>Plus rarement, <code>Promise.race</code>.</p>
+            <p class="fragment">Plus rarement, <code>Promise.race</code>.</p>
           </section>
 
           <section id="promise-creation">
@@ -363,10 +371,6 @@ function promiseMe(itWontHurt) {
 
             <p>L’implémentation interne préserve les garanties (transition unique et exclusive, asynchronicité de l’appel des callbacks, etc.)</p>
           </section>
-<!--
-FIXME: slides:
-  - Création des nôtres
- -->
 
           <section id="promises-links" class="breathing">
             <h2>Quelques super ressources</h2>
@@ -374,6 +378,16 @@ FIXME: slides:
             <p><a target="_blank" href="http://www.html5rocks.com/fr/tutorials/es6/promises/">Tuto génial</a> de Jake Archibald.  Enfonce vraiment bien le clou.</p>
             <p class="fragment"><a target="_blank" href="https://www.promisejs.org/">promisejs.org</a>, une couverture exhaustive du sujet par Forbes Lindesay.</p>
             <p class="fragment"><a target="_blank" href="http://bevacqua.github.io/promisees/">Promisees</a>, un super bac à sable interactif de Nicolás Bevacqua.</p>
+          </section>
+
+          <section id="promises-practicing">
+            <h2>Pratiquons !</h2>
+
+            <pre><code data-trim>
+$ npm i -g promise-it-wont-hurt
+$ promise-it-wont-hurt
+            </code></pre>
+
           </section>
 
           <section id="promises-pros-and-cons">
@@ -389,13 +403,24 @@ FIXME: slides:
             <p class="fragment">Légère pénalité de performance (va disparaître)</p>
             <p class="fragment">Le flux du code reste <strong>non-intuitif</strong> / très différent du code synchrone.</p>
           </section>
-<!--
-FIXME: slides sur:
 
-- Cancelable / Timeout
-- Adapté au one-shot, pas au multi-event -> observables / RxJS / BaconJS.
- -->
+          <section id="promise-further">
+            <h2>Le mot de la fin sur les promesses…</h2>
 
+            <p>Adapté à des traitements <strong>one-shot</strong> : pas pour du récurrent / multiple / indéfini (type flux, événements, etc.). On préfèrera alors des <em>observables</em>, comme avec <a href="https://github.com/Reactive-Extensions/RxJS#readme">RxJS</a> ou <a href="https://baconjs.github.io/">BaconJS</a>, par exemple.</p>
+
+            <p>Le TC39 <a href="https://github.com/tc39/proposal-cancelable-promises#readme">bosse</a> sur le fait de rendre les promesses <strong>annulables</strong>, ce qui est critique pour tout un tas de cas.  Facilite aussi le fait de les soumettre à un <em>timeout</em>, qui aujourd’hui nécessite un peu un hack :</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+const timeoutPromise = <u>Promise.race([</u>
+  fetch(someSlowURL), <u>timeout(3000)</u>
+<u>])</u>
+
+function timeout (delay) {
+  return new Promise((_, reject) => { setTimeout(reject, delay, new Error('timeout!')) })
+}
+            </code></pre>
+          </section>
         </section> <!-- #promises -->
 
         <section data-state="theme-color-blue-yellow">
@@ -477,6 +502,8 @@ FIXME: slides sur:
             <p>Sera officiellement dans ES2017. Finalisé en juillet dernier.</p>
             <p>Déjà dispo en natif dans Edge 13+ et Chrome 53+… derrière un flag.</p>
             <p>Babel est ton ami (polyfille à coup de promesses + générateurs).</p>
+
+            <p><a href="https://babeljs.io/repl/#?babili=false&evaluate=true&lineWrap=false&presets=latest&code=const%20ROOT_URL%20%3D%20'https%3A%2F%2Fjsonplaceholder.typicode.com'%0A%0Amain()%0A%0Afunction%20getJSON%20(url)%20%7B%0A%20%20return%20fetch(ROOT_URL%20%2B%20url).then((res)%20%3D%3E%20res.json())%0A%7D%0A%0Aasync%20function%20main%20()%20%7B%0A%20%20try%20%7B%0A%20%20%20%20console.time('fetching')%0A%20%20%20%20%2F%2F%20Notre%20code%20ici%0A%20%20%20%20console.timeEnd('fetching')%0A%20%20%7D%20catch%20(err)%20%7B%0A%20%20%20%20console.error(err)%0A%20%20%7D%0A%7D%0A" target="_blank"><strong>Allez, pratiquons !</strong></a></p>
           </section>
         </section> <!-- #async-await -->
 
