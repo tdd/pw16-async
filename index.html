@@ -81,7 +81,7 @@ var christophe = {
     'Prototype and Script.aculo.us',
     'Paris Web'
   ]
-};
+}
           </code></pre>
 				</section>
 
@@ -96,20 +96,20 @@ var christophe = {
             <h2>Un exemple simple</h2>
 
             <pre><code class="javascript" data-trim data-noescape>
-function readPost(req, res) {
-  Post.findById(req.params.id<u>, function(err, post)</u> {
+function readPost (req, res) {
+  Post.findById(req.params.id<u>, function (err, post)</u> {
     if (err) {
-      return handleError(err);
+      return handleError(err)
     }
 
-    <span class="fragment">post.findRecentComments(<u>function(err, comments) {</u>
+    <span class="fragment">post.findRecentComments(<u>function (err, comments) {</u>
       if (err) {
-        return handleError(err);
+        return handleError(err)
       }
 
-      res.render('posts/show', { post: post, comments: comments, title: post.title });
-    });</span>
-  });
+      res.render('posts/show', { post, comments, title: post.title })
+    })</span>
+  })
 }
             </code></pre>
           </section>
@@ -118,29 +118,28 @@ function readPost(req, res) {
             <h2>Un exemple plus réaliste</h2>
 
             <pre><code class="javascript" data-trim data-noescape>
-function normalizeSKUs(skus, <u>cb</u>) {
-  var <u>normalizations = {}, count, xhrs = []</u>;
+function normalizeSKUs (skus, <u>cb</u>) {
+  let <u>normalizations = {}, count, xhrs = []</u>
 
-  function handleError(err) {
-    _(xhrs).invoke('abort');
-    <u>cb(err);</u>
+  function handleError (err) {
+    _(xhrs).invoke('abort')
+    <u>cb(err)</u>
   }
 
-  function handleSKU(payload) {
-    normalizations[payload.from] = payload.to;
-    if (<u>++count &lt; xhrs.length</u>)
-      return;
+  function handleSKU (payload) {
+    normalizations[payload.from] = payload.to
+    if (<u>++count &lt; xhrs.length</u>) return
 
-    <u>cb(null, normalizations);</u>
+    <u>cb(null, normalizations)</u>
   }
 
-  function normalizeFromServer(sku) {
+  function normalizeFromServer (sku) {
     xhrs.push($.ajax({
-      url:       '/api/v1/skus/normalize',
-      data:      { sku: sku },
+      url: '/api/v1/skus/normalize',
+      data: { sku },
       <u>onSuccess: handleSKU</u>,
-      <u>onError:   handleError</u>
-    }));
+      <u>onError: handleError</u>
+    }))
   }
 }
             </code></pre>
@@ -352,19 +351,19 @@ getTags()
             <p>Motif du <em>Revealing Constructor</em> :</p>
 
             <pre><code class="javascript" data-trim data-noescape>
-function promiseMe(itWontHurt) {
-  <u>return new Promise(function(resolve, reject) {</u>
-    var req = new XMLHttpRequest();
-    req.open('GET', url);
-    req.onload = function() {
+function promiseMe (itWontHurt) {
+  <u>return new Promise(function (resolve, reject) {</u>
+    var req = new XMLHttpRequest()
+    req.open('GET', url)
+    req.onload = function () {
       if (req.status === 200) {
-        <u>resolve</u>(req.response);
+        <u>resolve</u>(req.response)
       } else {
-        <u>reject(new Error(</u>req.statusText));
+        <u>reject(new Error(</u>req.statusText))
       }
-    };
-    req.onerror = function() { <u>reject(new Error(</u>"Network error")); };
-    req.send();
+    }
+    req.onerror = function() { <u>reject(new Error(</u>'Network error')) }
+    req.send()
   })
 }
             </code></pre>
@@ -441,22 +440,22 @@ function timeout (delay) {
             <h2>Synchrone ou asynchrone ?</h2>
 
             <pre><code class="javascript" data-trim data-noescape>
-<u>async</u> function loadStory() {
+<u>async</u> function loadStory () {
   try {
-    const story = <u>await</u> getJSON('story.json');
-    addHtmlToPage(story.heading);
+    const story = <u>await</u> getJSON('story.json')
+    addHtmlToPage(story.heading)
 
     for (let chapterPromise of story.chapterUrls.map(getJSON)) {
-      const chapter = <u>await</u> chapterPromise;
-      addHtmlToPage(chapter.html);
+      const chapter = <u>await</u> chapterPromise
+      addHtmlToPage(chapter.html)
     }
 
-    addTextToPage("All done");
+    addTextToPage('All done')
   } catch (err) {
-    addTextToPage("Argh, broken: " + err.message);
+    addTextToPage(`Argh, broken: ${err.message}`)
   }
-  hideSpinner();
-});
+  hideSpinner()
+})
             </code></pre>
           </section>
 
@@ -464,14 +463,14 @@ function timeout (delay) {
             <h2>Synchrone ou asynchrone ?</h2>
 
             <pre><code class="javascript" data-trim data-noescape>
-<u>async</u> function login</u>(username, password, session) {
-  const user = <u>await</u> getUser(username);
-  const hash = <u>await</u> crypto.hashAsync(password + user.salt);
+<u>async</u> function login</u> (username, password, session) {
+  const user = <u>await</u> getUser(username)
+  const hash = <u>await</u> crypto.hashAsync(password + user.salt)
   if (user.hash !== hash) {
-    throw new Error('Incorrect password');
+    throw new Error('Incorrect password')
   }
-  session.setUser(user);
-});
+  session.setUser(user)
+})
             </code></pre>
           </section>
 
@@ -479,7 +478,7 @@ function timeout (delay) {
             <h2>Synchrone ou asynchrone ?</h2>
 
             <pre><code class="javascript" data-trim data-noescape>
-<u>async</u> function loadDashboard(req, res) {
+<u>async</u> function loadDashboard (req, res) {
   const user = <u>await</u> loadUser(req.session.userId)
   const [profile, notifs] = <u>await Promise.all([</u>
     user.getProfile(), user.getNotifications()
