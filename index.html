@@ -183,24 +183,169 @@ function normalizeSKUs(skus, <u>cb</u>) {
             <p class="fragment">Des tas de libs (Q, rsvp, bluebird…), polyfills… Désormais <strong>natives à ES2015</strong>.</p>
           </section>
 
-<!--
-FIXME: slides (JST?) sur:
-  - Les états
-  - then
-  - catch vs. then(a, b) vs. then(undefined, b)
-  - conversion synchrone/throw
-  - injection par renvoi de promesse
-  - Parallélisme avec all et race
-  - Création des nôtres
- -->
+          <section id="promises-a-plus">
+            <h2>Promises/A+</h2>
+            <h4>There can be only one</h4>
 
-          <section id="promises-simple-example">
-            <h2>Exemples simples</h2>
+            <p><a href="http://promisesaplus.com/">La spec de référence</a>.  Définit :</p>
 
-            <p>Enrobage XHR :</p>
+            <ul>
+              <li>la terminologie (promesse, états et destins, <em>thenable</em>, etc.)</li>
+              <li>les transitions d’état possibles</li>
+              <li>le fonctionnement de <code>then</code> (chaînage, propagation, etc.)</li>
+              <li>la sémantique de résolution</li>
+            </ul>
+          </section>
+
+          <section id="promises-concepts">
+            <h2>Promesses</h2>
+
+            <h4>États</h4>
+
+            <ul>
+              <li><strong>En attente</strong> (<em lang="en">pending</em>) : n’a pas encore abouti à un résultat</li>
+              <li><strong>Accomplie</strong> (<em lang="en">fulfilled</em>) : a abouti à un résultat (<em lang="en">value</em>), figé</li>
+              <li><strong>Rejetée</strong> (<em lang="en">rejected</em>) : a eu un souci et fournit la raison, figée</li>
+              <li><strong>Établie</strong> (<em lang="en">settled</em>) : accomplie ou rejetée (pas en attente, donc)</li>
+            </ul>
+
+            <h4>Transition unique</h4>
+
+            <p>Une promesse ne change d’état qu’une seule fois, d’en attente à accomplie ou rejetée.</p>
+
+            <p class="footnote"><a href="https://github.com/domenic/promises-unwrapping/blob/master/docs/states-and-fates.md">States and Fates</a></p>
+          </section>
+
+          <section id="then-and-chain">
+            <h2>Chaînage</h2>
+
+            <p>Une promesse a une méthode <code>then(…)</code></p>
+            <p>Elle prend en fait jusqu’à 2 arguments, tous 2 optionnels :</p>
+
+            <ol>
+              <li>Le callback de <em>succès</em> (accomplissement)</li>
+              <li>Le callback d’<em>erreur</em> (rejet)</li>
+            </ol>
+
+            <p>Notez qu’une API peut s’accomplir <em>sans valeur de résultat</em> (ex. lookup en base de données) : ça ne constitue pas forcément un échec.</p>
+          </section>
+
+          <section id="then-and-chain-2">
+            <h2>Chaînage</h2>
+
             <pre><code class="javascript" data-trim data-noescape>
-function get(url) {
-  return <u>new Promise(function(resolve, reject)</u> {
+lookupUser(userId)
+<u>.then(</u>
+  (user) => console.log('USER:', user.getName()),  // Callback de succès
+  (<u>err</u>)  => console.error(err)                    // Callback d’erreur
+<u>)</u>
+            </code></pre>
+
+            <p>Mais n’oubliez pas : ils sont <strong>exclusifs !</strong></p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+lookupUser(<u>unknown</u>UserId)
+.then(
+  (user) => console.log('USER:', user<u>.getName()</u>), // user === null -> BLAM
+  (err)  => console.error(err)                     // Pas appelé !
+)
+            </code></pre>
+
+            <p>Alors on fait comment ?</p>
+          </section>
+
+          <section id="then-and-catch">
+            <h2>Toujours vérifier <em>à la fin</em></h2>
+            <h4>(au minimum…)</h4>
+
+            <pre><code class="javascript" data-trim data-noescape>
+lookupUser(unknownUserId)
+.then((user) => console.log('USER:', user.getName()))  // Étape 1
+<u>.then(null,</u> (err) => console.error(err))              // Étape 2
+            </code></pre>
+
+            <p>Mais <code>then(null, …)</code> c’est <em>fugly</em>.  Alors…</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+lookupUser(unknownUserId)
+.then((user) => console.log('USER:', user.getName()))  // Étape 1
+<u>.catch(</u>(err) => console.error(err))                   // Étape 2
+            </code></pre>
+
+            <p>Comme pour un <code>try…catch…</code>, tout callback d’erreur neutralise l’erreur, et on pourrait continuer derrière du coup.</p>
+          </section>
+
+          <section id="promise-conversion">
+            <h2>Conversions automatiques</h2>
+
+            <p>Une étape de la chaîne peut renvoyer une valeur synchrone : elle sera automatiquement convertie en promesse accomplie :</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+lookupUser(userId)
+.then((user) => <u>user.getName()</u>) // Renvoi synchrone de valeur !
+.then(console.log)               // …et pourtant `.then(…)` :-)
+            </code></pre>
+
+            <p>Et une levée d’exception sera convertie en promesse rejetée :</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+xhrWrap('http://delicious-insights.com')
+.then((text) => <u>JSON.parse</u>(text)) // KA-BOOM! (`ParseError`)
+.<u>catch</u>(console.error)             // Tadaaaaa…
+            </code></pre>
+          </section>
+
+          <section id="promise-injection">
+            <h2>Injection de promesse dynamique</h2>
+
+            <p>On peut <strong>renvoyer une promesse</strong> depuis un callback, et celle-ci s’incruste à cet endroit dans la chaîne.</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+fetch(url)
+.then((res) => res.json()) // Promesse de décodage JSON une fois tout le contenu reçu
+.then(console.log)
+            </code></pre>
+
+            <pre><code class="javascript" data-trim data-noescape>
+getUser(userId)
+.then((user) => user.getFollowers())
+.then((followers) => render('user/followers', { followers }))
+            </code></pre>
+          </section>
+
+          <section id="promise-parallel">
+            <h2>Parallélisme</h2>
+
+            <p>On risque, à tort, de faire des séquences par réflexe, là où le parallélisme devient possible, puisqu’on est non bloquants…</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+let tags, entries
+getTags()
+.then((t) =>          { tags = t; return getEntries() })
+.then((es) =>         { entries = es; return getEntryCount() })
+.then((entryCount) => { render('entries/index', { tags, entries, entryCount }) })
+            </code></pre>
+
+            <p>Eh, c’est JS, pas Java/PHP/Ruby/Python les gens !</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+<u>Promise.all([</u>getTags(), getEntries(), getEntryCount()<u>])</u>
+.then((<u>[tags, entries, entryCount]</u>) => {
+  render('entries/index', { tags, entries, entryCount })
+})
+            </code></pre>
+
+            <p>Plus rarement, <code>Promise.race</code>.</p>
+          </section>
+
+          <section id="promise-creation">
+            <h2>Créer nos propres promesses</h2>
+
+            <p>Motif du <em>Revealing Constructor</em> :</p>
+
+            <pre><code class="javascript" data-trim data-noescape>
+function promiseMe(itWontHurt) {
+  <u>return new Promise(function(resolve, reject) {</u>
     var req = new XMLHttpRequest();
     req.open('GET', url);
     req.onload = function() {
@@ -212,33 +357,16 @@ function get(url) {
     };
     req.onerror = function() { <u>reject(new Error(</u>"Network error")); };
     req.send();
-  });
+  })
 }
             </code></pre>
 
-            <p>Les objets jqXHR de jQuery 3+ sont des promesses :</p>
-            <pre><code class="javascript" data-trim data-noescape>
-$.getJSON('/api/v1/status').then(renderStatus, handleError);
-            </code></pre>
+            <p>L’implémentation interne préserve les garanties (transition unique et exclusive, asynchronicité de l’appel des callbacks, etc.)</p>
           </section>
-
-          <section id="promises-involved-example">
-            <h2>Un exemple plus velu</h2>
-
-            <pre><code class="javascript" data-trim data-noescape>
-function getJSON(url) {
-  return get(url).then(<u>JSON.parse</u>); // Sync, throwing steps are cast!
-}
-
-getJSON('story.json').then(function(story) {
-  <u>return getJSON</u>(story.chapterUrls[0]); // Chain injection!
-}).then(function(chapter1) {
-  addHtmlToPage(chapter1.html);
-})<u>.catch</u>(function() { // Exception catching!
-  addTextToPage("Chapter couldn’t display.  FML.");
-}).then(hideSpinner);
-            </code></pre>
-          </section>
+<!--
+FIXME: slides:
+  - Création des nôtres
+ -->
 
           <section id="promises-links" class="breathing">
             <h2>Quelques super ressources</h2>
